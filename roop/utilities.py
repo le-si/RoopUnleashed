@@ -18,6 +18,23 @@ from pathlib import Path
 from typing import List, Any
 from tqdm import tqdm
 from scipy.spatial import distance
+import roop.globals
+
+def browse_directory(initial_dir=None):
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        if initial_dir and os.path.isdir(initial_dir):
+            path = filedialog.askdirectory(initialdir=initial_dir)
+        else:
+            path = filedialog.askdirectory()
+        root.destroy()
+        return path
+    except:
+        return None
 
 import roop.template_parser as template_parser
 

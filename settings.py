@@ -29,7 +29,7 @@ class Settings:
         self.output_video_format = self.default_get(data, 'output_video_format', 'mp4')
         self.output_video_codec = self.default_get(data, 'output_video_codec', 'libx264')
         self.video_quality = self.default_get(data, 'video_quality', 14)
-        self.clear_output = self.default_get(data, 'clear_output', True)
+        self.clear_output = self.default_get(data, 'clear_output', False)
         self.max_threads = self.default_get(data, 'max_threads', 2)
         self.memory_limit = self.default_get(data, 'memory_limit', 0)
         self.provider = self.default_get(data, 'provider', 'cuda')
@@ -38,6 +38,36 @@ class Settings:
         self.use_os_temp_folder = self.default_get(data, 'use_os_temp_folder', False)
         self.output_show_video = self.default_get(data, 'output_show_video', True)
         self.launch_browser = self.default_get(data, 'launch_browser', False)
+        self.output_folder = self.default_get(data, 'output_folder', "")
+        self.last_source_folder = self.default_get(data, 'last_source_folder', "")
+        self.last_target_folder = self.default_get(data, 'last_target_folder', "")
+        self.output_method = self.default_get(data, 'output_method', "File")
+        self.show_mask_offsets = self.default_get(data, 'show_mask_offsets', False)
+        self.restore_original_mouth = self.default_get(data, 'restore_original_mouth', False)
+        self.mask_top = self.default_get(data, 'mask_top', 0)
+        self.mask_bottom = self.default_get(data, 'mask_bottom', 0)
+        self.mask_left = self.default_get(data, 'mask_left', 0)
+        self.mask_right = self.default_get(data, 'mask_right', 0)
+        self.mask_erosion = self.default_get(data, 'mask_erosion', 1.0)
+        self.mask_blur = self.default_get(data, 'mask_blur', 20.0)
+        self.face_masking_engine = self.default_get(data, 'face_masking_engine', "None")
+        self.clip_text = self.default_get(data, 'clip_text', "cup,hands,hair,banana")
+        self.face_swap_frames = self.default_get(data, 'face_swap_frames', False)
+        self.face_selection_mode = self.default_get(data, 'face_selection_mode', "First found")
+        self.num_swap_steps = self.default_get(data, 'num_swap_steps', 1)
+        self.selected_enhancer = self.default_get(data, 'selected_enhancer', "None")
+        self.max_face_distance = self.default_get(data, 'max_face_distance', 0.65)
+        self.upscale_to = self.default_get(data, 'upscale_to', "128px")
+        self.blend_ratio = self.default_get(data, 'blend_ratio', 0.65)
+        self.video_swapping_method = self.default_get(data, 'video_swapping_method', "In-Memory processing")
+        self.no_face_action = self.default_get(data, 'no_face_action', "Use untouched original frame")
+        self.vr_mode = self.default_get(data, 'vr_mode', False)
+        self.autorotate_faces = self.default_get(data, 'autorotate_faces', True)
+        self.skip_audio = self.default_get(data, 'skip_audio', False)
+        self.keep_frames = self.default_get(data, 'keep_frames', False)
+        self.wait_after_extraction = self.default_get(data, 'wait_after_extraction', False)
+        self.last_source_files = self.default_get(data, 'last_source_files', [])
+        self.last_target_files = self.default_get(data, 'last_target_files', [])
 
 
 
@@ -58,9 +88,39 @@ class Settings:
             'memory_limit' : self.memory_limit,
             'provider' : self.provider,
             'force_cpu' : self.force_cpu,
-			'output_template' : self.output_template,
+            'output_template' : self.output_template,
             'use_os_temp_folder' : self.use_os_temp_folder,
-            'output_show_video' : self.output_show_video
+            'output_show_video' : self.output_show_video,
+            'output_folder' : self.output_folder,
+            'last_source_folder' : self.last_source_folder,
+            'last_target_folder' : self.last_target_folder,
+            'output_method' : self.output_method,
+            'show_mask_offsets' : self.show_mask_offsets,
+            'restore_original_mouth' : self.restore_original_mouth,
+            'mask_top' : self.mask_top,
+            'mask_bottom' : self.mask_bottom,
+            'mask_left' : self.mask_left,
+            'mask_right' : self.mask_right,
+            'mask_erosion' : self.mask_erosion,
+            'mask_blur' : self.mask_blur,
+            'face_masking_engine' : self.face_masking_engine,
+            'clip_text' : self.clip_text,
+            'face_swap_frames' : self.face_swap_frames,
+            'face_selection_mode' : self.face_selection_mode,
+            'num_swap_steps' : self.num_swap_steps,
+            'selected_enhancer' : self.selected_enhancer,
+            'max_face_distance' : self.max_face_distance,
+            'upscale_to' : self.upscale_to,
+            'blend_ratio' : self.blend_ratio,
+            'video_swapping_method' : self.video_swapping_method,
+            'no_face_action' : self.no_face_action,
+            'vr_mode' : self.vr_mode,
+            'autorotate_faces' : self.autorotate_faces,
+            'skip_audio' : self.skip_audio,
+            'keep_frames' : self.keep_frames,
+            'wait_after_extraction' : self.wait_after_extraction,
+            'last_source_files' : self.last_source_files,
+            'last_target_files' : self.last_target_files
         }
         with open(self.config_file, 'w') as f:
             yaml.dump(data, f)

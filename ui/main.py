@@ -22,8 +22,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 def prepare_environment():
-    roop.globals.output_path = os.path.abspath(os.path.join(os.getcwd(), "output"))
-    os.makedirs(roop.globals.output_path, exist_ok=True)
+    if roop.globals.CFG.output_folder and os.path.isdir(roop.globals.CFG.output_folder):
+        roop.globals.output_path = roop.globals.CFG.output_folder
+    else:
+        roop.globals.output_path = ""
+    
     if not roop.globals.CFG.use_os_temp_folder:
         os.environ["TEMP"] = os.environ["TMP"] = os.path.abspath(os.path.join(os.getcwd(), "temp"))
     os.makedirs(os.environ["TEMP"], exist_ok=True)
@@ -55,7 +58,17 @@ def run():
             overflow-y: auto !important;
         }
         .image-container.svelte-1l6wqyv {height: 100%}
-
+        #action_buttons_row {
+            position: sticky !important;
+            top: 0;
+            z-index: 1000;
+        }
+        #target_history_dropdown span {
+            white-space: nowrap !important;
+        }
+        #target_history_dropdown .wrap {
+            min-width: 100% !important;
+        }
     """
 
     while run_server:
@@ -70,16 +83,44 @@ def run():
             with gr.Row(variant='compact'):
                     gr.Markdown(f"### [{roop.metadata.name} {roop.metadata.version}](https://github.com/C0untFloyd/roop-unleashed)")
                     gr.HTML(util.create_version_html(), elem_id="versions")
-            faceswap_tab()
-            livecam_tab()
-            facemgr_tab()
-            extras_tab()
-            settings_tab()
+
+            with gr.Column(visible=not bool(roop.globals.output_path)) as output_setup_col:
+                gr.Markdown("### ⚠️ Output Directory Required\nPlease select or enter a directory where processed files will be saved.")
+                with gr.Row():
+                    out_dir_path = gr.Textbox(label="Output Path", value=roop.globals.output_path, placeholder="e.g. C:/Users/Documents/RoopOutput", interactive=True)
+                    bt_browse_out = gr.Button("📁 Browse", size="sm")
+                bt_confirm_out = gr.Button("✅ Save and Start", variant="primary")
+
+            with gr.Tabs(visible=bool(roop.globals.output_path)) as main_tabs:
+                faceswap_tab()
+                livecam_tab()
+                facemgr_tab()
+                extras_tab()
+                settings_tab()
+
+            def on_confirm_output(path):
+                if path and os.path.isdir(path):
+                    roop.globals.CFG.output_folder = path
+                    roop.globals.CFG.save()
+                    roop.globals.output_path = path
+                    return gr.update(visible=False), gr.update(visible=True)
+                else:
+                    gr.Warning("The specified path is not a valid directory!")
+                    return gr.update(visible=True), gr.update(visible=False)
+
+            bt_browse_out.click(fn=lambda: util.browse_directory(initial_dir=roop.globals.CFG.output_folder), outputs=[out_dir_path])
+            bt_confirm_out.click(fn=on_confirm_output, inputs=[out_dir_path], outputs=[output_setup_col, main_tabs])
         launch_browser = roop.globals.CFG.launch_browser
 
         uii.ui_restart_server = False
+        allowed_paths = [os.getcwd(), os.path.abspath('data')]
+        if roop.globals.output_path:
+            allowed_paths.append(roop.globals.output_path)
+        if "TEMP" in os.environ:
+            allowed_paths.append(os.environ["TEMP"])
+
         try:
-            ui.queue().launch(inbrowser=launch_browser, server_name=server_name, server_port=server_port, share=roop.globals.CFG.server_share, ssl_verify=ssl_verify, prevent_thread_lock=True, show_error=True)
+            ui.queue().launch(inbrowser=launch_browser, server_name=server_name, server_port=server_port, share=roop.globals.CFG.server_share, ssl_verify=ssl_verify, prevent_thread_lock=True, show_error=True, allowed_paths=allowed_paths)
         except Exception as e:
             print(f'Exception {e} when launching Gradio Server!')
             uii.ui_restart_server = True

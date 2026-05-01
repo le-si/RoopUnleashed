@@ -379,6 +379,7 @@ def batch_process(output_method, files:list[ProcessEntry], use_new_method) -> No
 def end_processing(msg:str):
     update_status(msg)
     roop.globals.target_folder_path = None
+    roop.globals.processing = False
     release_resources()
 
 
