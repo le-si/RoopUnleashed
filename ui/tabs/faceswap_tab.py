@@ -51,13 +51,19 @@ def load_persistent_faces():
     import roop.utilities as util
     from ui.globals import ui_input_thumbs
     
+    # Use absolute path based on this file's location
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    data_dir = os.path.join(base_dir, 'data')
+    finalzip = os.path.join(data_dir, 'persistent_faces.fsz')
+    
+    print(f"DEBUG: load_persistent_faces - Checking absolute path: {finalzip}")
+    
     ui_input_thumbs.clear()
     roop.globals.INPUT_FACESETS.clear()
 
-    data_dir = os.path.join(os.getcwd(), 'data')
-    finalzip = os.path.join(data_dir, 'persistent_faces.fsz')
-    print(f"Loading persistent faces from {finalzip}")
     if not os.path.exists(finalzip):
+        print("DEBUG: load_persistent_faces - Persistent file NOT found at absolute path.")
+        return
         return
         
     unzipfolder = os.path.join(os.environ.get("TEMP", os.getcwd()), 'persistent_faces_unzip')
@@ -76,14 +82,15 @@ def load_persistent_faces():
             face = f[0]
             face.mask_offsets = (0,0,0,0,1,20)
             face_set.faces.append(face)
-            image = util.convert_to_gradio(fd[1])
+            image = util.convert_to_gradio(f[1])
             ui.globals.ui_input_thumbs.append(image)
             face_set.ref_images.append(get_image_frame(filename))
             roop.globals.INPUT_FACESETS.append(face_set)
 
 def save_persistent_faces(*args, **kwargs):
     try:
-        data_dir = os.path.join(os.getcwd(), 'data')
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        data_dir = os.path.join(base_dir, 'data')
         os.makedirs(data_dir, exist_ok=True)
         imgnames = []
         temp_dir = os.path.join(os.environ.get("TEMP", os.getcwd()), 'persistent_faces_tmp')
@@ -117,7 +124,9 @@ def save_persistent_faces(*args, **kwargs):
 
 def load_target_history():
     import json
+def load_target_history():
     import os
+    import json
     history_file = os.path.join(os.getcwd(), 'data', 'target_history.json')
     if os.path.exists(history_file):
         try:
@@ -149,17 +158,35 @@ def update_target_history(destfiles):
             history.insert(0, path)
     history = history[:20]
     save_target_history(history)
-    return gr.update(choices=history)
+    return gr.update(choices=["--- Select From History ---"] + history)
 
-def on_history_selected(path):
+def on_history_selected(path, current_files=None):
     import os
-    import gradio as gr
-    if not path:
-        return None
+    if not path or path == "--- Select From History ---":
+        return gr.update()
+    
     if not os.path.exists(path):
         gr.Warning("Target file is no longer available.")
-        return None
-    return [path]
+        return gr.update()
+    
+    files = []
+    if current_files:
+        try:
+            files = [getattr(f, 'name', str(f)) for f in current_files]
+        except Exception:
+            files = []
+    
+    # Normalize paths for comparison
+    norm_path = os.path.normpath(path)
+    norm_files = [os.path.normpath(f) for f in files]
+    
+    if norm_path not in norm_files:
+        files.append(path)
+        print(f"DEBUG: on_history_selected - Added {path}. Total files: {len(files)}")
+    else:
+        print(f"DEBUG: on_history_selected - Path {path} already in list.")
+    
+    return files
 
 def faceswap_tab():
     global no_face_choices, previewimage
@@ -186,14 +213,9 @@ def faceswap_tab():
                 output_method = gr.Dropdown(["File","Virtual Camera", "Both"], value=roop.globals.CFG.output_method, label="Select Output Method", interactive=True)
         with gr.Row(variant='panel'):
             with gr.Column(scale=2):
-                with gr.Row(variant='panel'):
-                    bt_srcfiles = gr.Files(label='Source Images or Facesets', file_count="multiple", file_types=[".png", ".jpg", ".jpeg", ".webp", ".fsz"], elem_id='filelist', height=233, value=roop.globals.CFG.last_source_files)
-                    with gr.Column():
-                        bt_destfiles = gr.Files(label='Target File(s)', file_count="multiple", file_types=["image", "video"], elem_id='filelist', height=160, value=roop.globals.CFG.last_target_files)
-                        target_history_dropdown = gr.Dropdown(choices=load_target_history(), label="Target History (Previously used)", interactive=True, elem_id='target_history_dropdown')
                 with gr.Row():
-                    input_faces = gr.Gallery(label="Input faces gallery", allow_preview=False, preview=False, height=138, columns=64, object_fit="scale-down", interactive=True, value=ui.globals.ui_input_thumbs)
-                    target_faces = gr.Gallery(label="Target faces gallery", allow_preview=False, preview=False, height=138, columns=64, object_fit="scale-down", interactive=True)
+                    input_faces = gr.Gallery(label="Input faces gallery", allow_preview=False, preview=False, height=400, columns=3, object_fit="scale-down", interactive=True, value=ui.globals.ui_input_thumbs)
+                    target_faces = gr.Gallery(label="Target faces gallery", allow_preview=False, preview=False, height=400, columns=3, object_fit="scale-down", interactive=True)
                 with gr.Row():
                     bt_move_left_input = gr.Button("⬅ Move left", size='sm')
                     bt_move_right_input = gr.Button("➡ Move right", size='sm')
@@ -205,6 +227,13 @@ def faceswap_tab():
                     bt_remove_selected_target_face = gr.Button("❌ Remove selected", size='sm')
                     bt_browse_source = gr.Button('📁 Browse Source Folder', size='sm')
                     bt_browse_output = gr.Button('📁 Browse Output Folder', size='sm')
+                with gr.Row(variant='panel'):
+                    bt_srcfiles = gr.Files(label='Source Images or Facesets', file_count="multiple", file_types=[".png", ".jpg", ".jpeg", ".webp", ".fsz"], elem_id='filelist', height=233, value=roop.globals.CFG.last_source_files)
+                    with gr.Column():
+                        bt_destfiles = gr.Files(label='Target File(s)', file_count="multiple", file_types=["image", "video"], elem_id='filelist', height=160, value=roop.globals.CFG.last_target_files)
+                        with gr.Row():
+                            target_history_dropdown = gr.Dropdown(choices=["--- Select From History ---"] + load_target_history(), label="Target History (Previously used)", interactive=True, elem_id='target_history_dropdown', value="--- Select From History ---", scale=4)
+                            bt_add_to_history = gr.Button("➕", size='sm', scale=1)
                 with gr.Row():
                     with gr.Column(scale=2):
                         with gr.Accordion(label="Advanced Masking", open=False):
@@ -366,7 +395,7 @@ def faceswap_tab():
     bt_destfiles.change(fn=on_destfiles_changed, inputs=[bt_destfiles], outputs=[preview_frame_num, text_frame_clip], show_progress='hidden').success(fn=on_preview_frame_changed, inputs=previewinputs, outputs=previewoutputs, show_progress='hidden').success(fn=update_target_history, inputs=[bt_destfiles], outputs=[target_history_dropdown])
     bt_destfiles.change(fn=lambda v: on_setting_changed('last_target_files', [f.name if hasattr(f, 'name') else f for f in v] if v else []), inputs=[bt_destfiles])
     bt_destfiles.select(fn=on_destfiles_selected, outputs=[preview_frame_num, text_frame_clip, forced_fps], show_progress='hidden').success(fn=on_preview_frame_changed, inputs=previewinputs, outputs=previewoutputs, show_progress='hidden')
-    target_history_dropdown.change(fn=on_history_selected, inputs=[target_history_dropdown], outputs=[bt_destfiles]).success(fn=on_destfiles_changed, inputs=[bt_destfiles], outputs=[preview_frame_num, text_frame_clip], show_progress='hidden').success(fn=on_preview_frame_changed, inputs=previewinputs, outputs=previewoutputs, show_progress='hidden')
+    bt_add_to_history.click(fn=on_history_selected, inputs=[target_history_dropdown, bt_destfiles], outputs=[bt_destfiles], show_progress='hidden').success(fn=on_destfiles_changed, inputs=[bt_destfiles], outputs=[preview_frame_num, text_frame_clip]).success(fn=on_preview_frame_changed, inputs=previewinputs, outputs=previewoutputs)
     bt_destfiles.clear(fn=on_clear_destfiles, outputs=[target_faces, selected_face_detection])
     resultfiles.select(fn=on_resultfiles_selected, inputs=[resultfiles], outputs=[resultimage, resultvideo])
 
@@ -548,7 +577,12 @@ def on_srcfile_changed(srcfiles, progress=gr.Progress()):
                 face.mask_offsets = (0,0,0,0,1,20)
                 face_set.faces.append(face)
                 roop.globals.INPUT_FACESETS.append(face_set)
-                image = util.convert_to_gradio(fd[1])
+                
+                # Ensure we are adding the cutout (fd[1]) not the whole image
+                face_image = fd[1]
+                print(f"DEBUG: Adding face cutout of shape {face_image.shape}")
+                
+                image = util.convert_to_gradio(face_image)
                 ui.globals.ui_input_thumbs.append(image)
         
         progress(1.0)
@@ -623,10 +657,7 @@ def move_selected_target(button_text):
 
 
 
-def on_history_selected(selection):
-    if selection:
-        return [selection]
-    return None
+
 
 def on_select_target_face(evt: gr.SelectData):
     global SELECTED_TARGET_FACE_INDEX
@@ -1046,10 +1077,12 @@ def on_resultfiles_finished(files):
         return None, None
     
     file_obj = files[selected_index]
-    if isinstance(file_obj, dict):
+    if isinstance(file_obj, str):
+        filename = file_obj
+    elif isinstance(file_obj, dict):
         filename = file_obj['name']
     else:
-        filename = file_obj.name
+        filename = getattr(file_obj, 'name', str(file_obj))
     return display_output(filename)
 
 
